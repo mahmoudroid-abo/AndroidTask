@@ -2,6 +2,7 @@ package com.mahmoudroid.task.ui
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -9,6 +10,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.Navigation
+import com.facebook.shimmer.ShimmerFrameLayout
 import com.mahmoudroid.domain.entity.album.AlbumItem
 import com.mahmoudroid.task.R
 import com.mahmoudroid.task.adapters.AlbumsAdapter
@@ -40,21 +42,48 @@ class UserFragment : Fragment(R.layout.fragment_user),
     }
 
     private fun initUserdata() {
+        Log.e(TAG, "initUserdata: ")
+        Log.d("ShimmerDebug", "Starting shimmer effect")
+
+        // Start shimmer and hide the actual CardView initially
+        binding.shimmerLayout.startShimmer()
+        binding.shimmerLayout.visibility = View.VISIBLE
+        binding.userDataCardView.visibility = View.INVISIBLE
+
         lifecycleScope.launch {
-            viewModel.getUser(randomId.toString()).collect {
-                if (it.isSuccess) {
-                    binding.userName.text = it.getOrNull()?.name
-                    binding.userAddress.text =
-                        it.getOrNull()?.address?.city?.plus(", " + it.getOrNull()?.address!!.suite)
-                            .plus(", " + it?.getOrNull()?.address?.street)
-                    binding.progressBar.visibility = View.GONE
+            viewModel.getUser(randomId.toString()).collect { result ->
+                if (result.isSuccess) {
+                    Log.d("ShimmerDebug", "Data loaded successfully")
+                    val user = result.getOrNull()
+
+                    binding.userName.text = user?.name
+                    binding.userAddress.text = user?.address?.let {
+                        "${it.city}, ${it.suite}, ${it.street}"
+                    }
+
+                    // Stop shimmer and show the CardView
+                    binding.shimmerLayout.stopShimmer()
+                    binding.shimmerLayout.visibility = View.GONE
+                    binding.userDataCardView.visibility = View.VISIBLE
+
+                    Log.d("ShimmerDebug", "Shimmer stopped, CardView set to VISIBLE")
+
                 } else {
-                    Toast.makeText(requireContext(), "Failed To Load Data!", Toast.LENGTH_SHORT)
-                        .show()
+                    Log.e("ShimmerDebug", "Failed to load data")
+
+                    Toast.makeText(requireContext(), "Failed To Load Data!", Toast.LENGTH_SHORT).show()
+
+                    // Stop shimmer effect even if data fails to load, but still show the CardView
+                    binding.shimmerLayout.stopShimmer()
+                    binding.shimmerLayout.visibility = View.GONE
+                    binding.userDataCardView.visibility = View.VISIBLE
+
+                    Log.d("ShimmerDebug", "Shimmer stopped, CardView set to VISIBLE (failure case)")
                 }
             }
         }
     }
+
 
     private fun initAlbumsAdapter() {
         val adapter = AlbumsAdapter(this)
